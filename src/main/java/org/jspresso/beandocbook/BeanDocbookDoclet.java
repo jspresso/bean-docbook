@@ -19,6 +19,8 @@
 package org.jspresso.beandocbook;
 
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -42,6 +44,7 @@ import com.sun.javadoc.Type;
 public class BeanDocbookDoclet {
 
   private static String rootClassName;
+  private static String outputDir;
   private static int    indent = 0;
   private static Writer writer;
 
@@ -53,24 +56,31 @@ public class BeanDocbookDoclet {
    * @return true if succesful.
    */
   public static boolean start(RootDoc root) {
-    Map<ClassDoc, ClassTree> classTrees = new LinkedHashMap<ClassDoc, ClassTree>();
+    Map<String, ClassTree> classTrees = new LinkedHashMap<String, ClassTree>();
     ClassTree rootClassTree = null;
     readOptions(root.options());
     ClassDoc[] classes = root.classes();
     try {
-      writer = new BufferedWriter(new OutputStreamWriter(System.out, "UTF-8"));
+      File f = new File(outputDir, rootClassName.substring(rootClassName
+          .lastIndexOf(".") + 1)
+          + ".xml");
+      f.getParentFile().mkdirs();
+      writer = new BufferedWriter(new OutputStreamWriter(
+          new FileOutputStream(f), "UTF-8"));
+      writeHeader();
       for (ClassDoc classDoc : classes) {
-        if (classDoc.isPublic()) {
+        if (classDoc.isPublic() && classDoc.isClass()) {
           ClassTree classTree = new ClassTree(classDoc);
           if (rootClassName.equals(classDoc.qualifiedName())) {
             rootClassTree = classTree;
           }
-          classTrees.put(classDoc, classTree);
+          classTrees.put(classDoc.qualifiedTypeName(), classTree);
         }
       }
       if (rootClassTree != null) {
-        for (Map.Entry<ClassDoc, ClassTree> entry : classTrees.entrySet()) {
-          ClassTree parent = classTrees.get(entry.getKey().superclassType());
+        for (Map.Entry<String, ClassTree> entry : classTrees.entrySet()) {
+          ClassTree parent = classTrees.get(entry.getValue().getRoot()
+              .superclassType().qualifiedTypeName());
           if (parent != null) {
             parent.getSubclasses().add(entry.getValue());
           }
@@ -78,10 +88,17 @@ public class BeanDocbookDoclet {
         processClassTree(rootClassTree);
       }
       writer.flush();
+      writer.close();
     } catch (Exception ex) {
       ex.printStackTrace();
     }
     return true;
+  }
+
+  private static void writeHeader() throws IOException {
+    writeLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    writeLine("<!DOCTYPE chapter PUBLIC \"-//OASIS//DTD DocBook XML V4.4//EN\"");
+    writeLine("  \"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd\">");
   }
 
   private static void processClassTree(ClassTree classTree) throws IOException {
@@ -123,8 +140,10 @@ public class BeanDocbookDoclet {
     writeLine("</thead>");
     writeLine("<tbody>");
     indent++;
+    boolean atleastOneRow = false;
     for (MethodDoc methodDoc : classDoc.methods()) {
       if (methodDoc.isPublic() && isSetter(methodDoc)) {
+        atleastOneRow = true;
         writeLine("<row>");
         indent++;
         String property = getProperty(methodDoc);
@@ -151,6 +170,13 @@ public class BeanDocbookDoclet {
         indent--;
         writeLine("</row>");
       }
+    }
+    if (!atleastOneRow) {
+      writeLine("<row>");
+      indent++;
+      writeLine("<entry namest=\"name\" nameend=\"description\">This class does not have any specific property.</entry>");
+      indent--;
+      writeLine("</row>");
     }
     indent--;
     writeLine("</tbody>");
@@ -191,6 +217,8 @@ public class BeanDocbookDoclet {
       String[] opt = options[i];
       if (opt[0].equals("-rootClassName")) {
         rootClassName = opt[1];
+      } else if (opt[0].equals("-outputDir")) {
+        outputDir = opt[1];
       }
     }
   }
@@ -204,6 +232,8 @@ public class BeanDocbookDoclet {
    */
   public static int optionLength(String option) {
     if (option.equals("-rootClassName")) {
+      return 2;
+    } else if (option.equals("-outputDir")) {
       return 2;
     }
     return 0;
