@@ -44,6 +44,7 @@ import com.sun.javadoc.Type;
 public class BeanDocbookDoclet {
 
   private static String rootClassName;
+  private static String apidocUrl;
   private static String outputDir;
   private static int    indent = 0;
   private static Writer writer;
@@ -96,44 +97,55 @@ public class BeanDocbookDoclet {
   }
 
   private static void writeHeader() throws IOException {
-    writeLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-    writeLine("<!DOCTYPE chapter PUBLIC \"-//OASIS//DTD DocBook XML V4.4//EN\"");
-    writeLine("  \"http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd\">");
+    writeLine("<?xml version='1.0' encoding='UTF-8'?>");
+    writeLine("<!DOCTYPE chapter PUBLIC '-//OASIS//DTD DocBook XML V4.4//EN'");
+    writeLine("  'http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd'>");
   }
 
   private static void processClassTree(ClassTree classTree) throws IOException {
-    writeLine("<section>");
-    indent++;
     ClassDoc classDoc = classTree.getRoot();
+    writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
+    indent++;
     processClassDoc(classDoc);
     for (ClassTree subclassTree : classTree.getSubclasses()) {
       processClassTree(subclassTree);
     }
     indent--;
+    writeLine("<para></para>");
+    writeLine("<para></para>");
     writeLine("</section>");
   }
 
   private static void processClassDoc(ClassDoc classDoc) throws IOException {
     writeLine("<title>" + classDoc.name() + "</title>");
+    // writeLine("<para>");
+    // writeLine("<?dbfo keep-with-next='always'?>");
+    // writeLine("</para>");
     writeLine("<para>" + classDoc.commentText() + "</para>");
-    writeLine("<para>Package : " + classDoc.containingPackage().name()
-        + "</para>");
-    writeLine("<para>Properties :</para>");
+    writeLine("<para>Full name : <ulink url='" + computeJavadocUrl(classDoc)
+        + "'>" + classDoc.qualifiedTypeName() + "</ulink></para>");
+    if (classDoc.superclassType().qualifiedTypeName()
+        .startsWith("org.jspresso")) {
+      writeLine("<para>Inherits : <link linkend='"
+          + classDoc.superclassType().qualifiedTypeName() + "'>"
+          + classDoc.superclass().name() + "</link></para>");
+    }
+    writeLine("<para></para>");
     writeLine("<table>");
     indent++;
     writeLine("<title>" + classDoc.name() + " properties</title>");
-    writeLine("<tgroup cols=\"3\">");
+    writeLine("<tgroup cols='3'>");
     indent++;
-    writeLine("<colspec colname=\"name\" colwidth=\"1*\" />");
-    writeLine("<colspec colname=\"type\" colwidth=\"1*\" />");
-    writeLine("<colspec colname=\"description\" colwidth=\"4*\" />");
+    writeLine("<colspec colname='name' colwidth='1*' />");
+    writeLine("<colspec colname='type' colwidth='1*' />");
+    writeLine("<colspec colname='description' colwidth='3*' />");
     writeLine("<thead>");
     indent++;
     writeLine("<row>");
     indent++;
-    writeLine("<entry align=\"center\">Name</entry>");
-    writeLine("<entry align=\"center\">Type</entry>");
-    writeLine("<entry align=\"center\">Description</entry>");
+    writeLine("<entry align='center'>Name</entry>");
+    writeLine("<entry align='center'>Type</entry>");
+    writeLine("<entry align='center'>Description</entry>");
     indent--;
     writeLine("</row>");
     indent--;
@@ -174,7 +186,7 @@ public class BeanDocbookDoclet {
     if (!atleastOneRow) {
       writeLine("<row>");
       indent++;
-      writeLine("<entry namest=\"name\" nameend=\"description\">This class does not have any specific property.</entry>");
+      writeLine("<entry namest='name' nameend='description'>This class does not have any specific property.</entry>");
       indent--;
       writeLine("</row>");
     }
@@ -184,6 +196,11 @@ public class BeanDocbookDoclet {
     writeLine("</tgroup>");
     indent--;
     writeLine("</table>");
+  }
+
+  private static String computeJavadocUrl(ClassDoc classDoc) {
+    String name = classDoc.qualifiedTypeName();
+    return apidocUrl + "/" + name.replace(".", "/") + ".html";
   }
 
   private static String getProperty(MethodDoc methodDoc) {
@@ -219,6 +236,8 @@ public class BeanDocbookDoclet {
         rootClassName = opt[1];
       } else if (opt[0].equals("-outputDir")) {
         outputDir = opt[1];
+      } else if (opt[0].equals("-apidocUrl")) {
+        apidocUrl = opt[1];
       }
     }
   }
@@ -234,6 +253,8 @@ public class BeanDocbookDoclet {
     if (option.equals("-rootClassName")) {
       return 2;
     } else if (option.equals("-outputDir")) {
+      return 2;
+    } else if (option.equals("-apidocUrl")) {
       return 2;
     }
     return 0;
