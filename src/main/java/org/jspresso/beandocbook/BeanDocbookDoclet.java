@@ -136,7 +136,7 @@ public class BeanDocbookDoclet {
     writeLine("<listitem>");
     indent++;
     writeLine("<para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
-        + computeJavadocUrl(classDoc)
+        + computeJavadocUrl(classDoc.qualifiedTypeName())
         + "'>"
         + hyphenateDottedString(classDoc.qualifiedTypeName())
         + "</ulink></code></para>");
@@ -156,14 +156,15 @@ public class BeanDocbookDoclet {
     indent--;
     writeLine("</itemizedlist>");
     writeLine("<para></para>");
-    writeLine("<table>");
+    writeLine("<table colsep='1' rowsep='1' tabstyle='splitable'>");
+    writeLine("<?dbfo keep-together='auto'?>");
     indent++;
     writeLine("<title>" + classDoc.name() + " properties</title>");
     writeLine("<tgroup cols='3'>");
     indent++;
     writeLine("<colspec colname='name' colwidth='1*' />");
     writeLine("<colspec colname='type' colwidth='1*' />");
-    writeLine("<colspec colname='description' colwidth='3*' />");
+    writeLine("<colspec colname='description' colwidth='2*' />");
     writeLine("<thead>");
     indent++;
     writeLine("<row>");
@@ -190,18 +191,42 @@ public class BeanDocbookDoclet {
         if (pType != null) {
           Type[] typeArguments = pType.asParameterizedType().typeArguments();
           StringBuffer buff = new StringBuffer();
-          buff.append(param.type().simpleTypeName());
-          buff.append("&lt;");
+          if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
+            buff.append("<ulink url='"
+                + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+                + hyphenateCamelCase(param.type().simpleTypeName())
+                + "</ulink>");
+          } else {
+            buff.append(hyphenateCamelCase(param.type().simpleTypeName()));
+          }
+          buff.append("&#x200B;&lt;&#x200B;");
           for (int i = 0; i < typeArguments.length; i++) {
-            buff.append(typeArguments[i].simpleTypeName());
+            if (typeArguments[i].qualifiedTypeName().startsWith("org.jspresso")) {
+              buff.append("<ulink url='"
+                  + computeJavadocUrl(typeArguments[i].qualifiedTypeName())
+                  + "'>"
+                  + hyphenateCamelCase(typeArguments[i].simpleTypeName())
+                  + "</ulink>");
+            } else {
+              buff.append(typeArguments[i].simpleTypeName());
+            }
             if (i < typeArguments.length - 1) {
               buff.append(",");
             }
           }
-          buff.append("&gt;");
-          writeLine("<entry>" + buff.toString() + "</entry>");
+          buff.append("&#x200B;&gt;&#x200B;");
+          writeLine("<entry><code>" + buff.toString() + "</code></entry>");
         } else {
-          writeLine("<entry>" + param.type().simpleTypeName() + "</entry>");
+          if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
+            writeLine("<entry><code><ulink url='"
+                + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+                + hyphenateCamelCase(param.type().simpleTypeName())
+                + "</ulink></code></entry>");
+          } else {
+            writeLine("<entry><code>"
+                + hyphenateCamelCase(param.type().simpleTypeName())
+                + "</code></entry>");
+          }
         }
         writeLine("<entry>" + methodDoc.commentText() + "</entry>");
         indent--;
@@ -227,9 +252,22 @@ public class BeanDocbookDoclet {
     return source.replace(".", "&#x200B;.");
   }
 
-  private static String computeJavadocUrl(ClassDoc classDoc) {
-    String name = classDoc.qualifiedTypeName();
-    return apidocUrl + "/" + name.replace(".", "/") + ".html";
+  private static String hyphenateCamelCase(String source) {
+    StringBuffer buff = new StringBuffer();
+    for (int i = 0; i < source.length() - 1; i++) {
+      char c1 = source.charAt(i);
+      char c2 = source.charAt(i + 1);
+      buff.append(c1);
+      if (Character.isLowerCase(c1) && Character.isUpperCase(c2)) {
+        buff.append("&#x200B;");
+      }
+    }
+    buff.append(source.charAt(source.length() - 1));
+    return buff.toString();
+  }
+
+  private static String computeJavadocUrl(String qualifiedName) {
+    return apidocUrl + "/" + qualifiedName.replace(".", "/") + ".html";
   }
 
   private static String getProperty(MethodDoc methodDoc) {
