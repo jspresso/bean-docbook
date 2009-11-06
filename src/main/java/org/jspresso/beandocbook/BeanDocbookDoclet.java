@@ -107,13 +107,22 @@ public class BeanDocbookDoclet {
     writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
     indent++;
     processClassDoc(classDoc);
+    boolean childInSection = classTree.getSubclasses().size() > 1;
+    if (!childInSection) {
+      writeLine("<para></para>");
+      writeLine("<para></para>");
+      indent--;
+      writeLine("</section>");
+    }
     for (ClassTree subclassTree : classTree.getSubclasses()) {
       processClassTree(subclassTree);
     }
-    indent--;
-    writeLine("<para></para>");
-    writeLine("<para></para>");
-    writeLine("</section>");
+    if (childInSection) {
+      writeLine("<para></para>");
+      writeLine("<para></para>");
+      indent--;
+      writeLine("</section>");
+    }
   }
 
   private static void processClassDoc(ClassDoc classDoc) throws IOException {
@@ -122,14 +131,30 @@ public class BeanDocbookDoclet {
     // writeLine("<?dbfo keep-with-next='always'?>");
     // writeLine("</para>");
     writeLine("<para>" + classDoc.commentText() + "</para>");
-    writeLine("<para>Full name : <ulink url='" + computeJavadocUrl(classDoc)
-        + "'>" + classDoc.qualifiedTypeName() + "</ulink></para>");
+    writeLine("<itemizedlist>");
+    indent++;
+    writeLine("<listitem>");
+    indent++;
+    writeLine("<para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
+        + computeJavadocUrl(classDoc)
+        + "'>"
+        + hyphenateDottedString(classDoc.qualifiedTypeName())
+        + "</ulink></code></para>");
+    indent--;
+    writeLine("</listitem>");
+    writeLine("<listitem>");
+    indent++;
     if (classDoc.superclassType().qualifiedTypeName()
         .startsWith("org.jspresso")) {
-      writeLine("<para>Inherits : <link linkend='"
-          + classDoc.superclassType().qualifiedTypeName() + "'>"
-          + classDoc.superclass().name() + "</link></para>");
+      writeLine("<para><emphasis role='bold'>Inherits</emphasis> : <code><link linkend='"
+          + classDoc.superclassType().qualifiedTypeName()
+          + "'>"
+          + classDoc.superclass().name() + "</link></code></para>");
     }
+    indent--;
+    writeLine("</listitem>");
+    indent--;
+    writeLine("</itemizedlist>");
     writeLine("<para></para>");
     writeLine("<table>");
     indent++;
@@ -196,6 +221,10 @@ public class BeanDocbookDoclet {
     writeLine("</tgroup>");
     indent--;
     writeLine("</table>");
+  }
+
+  private static String hyphenateDottedString(String source) {
+    return source.replace(".", "&#x200B;.");
   }
 
   private static String computeJavadocUrl(ClassDoc classDoc) {
