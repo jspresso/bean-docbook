@@ -44,9 +44,11 @@ import com.sun.javadoc.Type;
 public class BeanDocbookDoclet {
 
   private static String rootClassName;
+  private static int    maxDepth  = -1;
   private static String apidocUrl;
   private static String outputDir;
-  private static int    indent = 0;
+  private static int    indent    = 0;
+  private static int    treeDepth = 0;
   private static Writer writer;
 
   /**
@@ -86,7 +88,14 @@ public class BeanDocbookDoclet {
             parent.getSubclasses().add(entry.getValue());
           }
         }
+        writeLine("<section>");
+        writeLine("<title>Reference for " + rootClassTree.getRoot().name()
+            + " hierarchy</title>");
+        indent++;
+        writeLine("<para></para>");
         processClassTree(rootClassTree);
+        indent--;
+        writeLine("</section>");
       }
       writer.flush();
       writer.close();
@@ -107,15 +116,20 @@ public class BeanDocbookDoclet {
     writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
     indent++;
     processClassDoc(classDoc);
-    boolean childInSection = classTree.getSubclasses().size() > 1;
+    // boolean childInSection = classTree.getSubclasses().size() > 1;
+    boolean childInSection = false;
     if (!childInSection) {
       writeLine("<para></para>");
       writeLine("<para></para>");
       indent--;
       writeLine("</section>");
     }
-    for (ClassTree subclassTree : classTree.getSubclasses()) {
-      processClassTree(subclassTree);
+    if (maxDepth < 0 || treeDepth < maxDepth) {
+      treeDepth++;
+      for (ClassTree subclassTree : classTree.getSubclasses()) {
+        processClassTree(subclassTree);
+      }
+      treeDepth--;
     }
     if (childInSection) {
       writeLine("<para></para>");
@@ -130,7 +144,7 @@ public class BeanDocbookDoclet {
     // writeLine("<para>");
     // writeLine("<?dbfo keep-with-next='always'?>");
     // writeLine("</para>");
-    writeLine("<para>" + classDoc.commentText() + "</para>");
+    writeLine("<para>" + javadocToDocbook(classDoc.commentText()) + "</para>");
     writeLine("<itemizedlist>");
     indent++;
     writeLine("<listitem>");
@@ -228,7 +242,8 @@ public class BeanDocbookDoclet {
                 + "</code></entry>");
           }
         }
-        writeLine("<entry>" + methodDoc.commentText() + "</entry>");
+        writeLine("<entry><para>" + javadocToDocbook(methodDoc.commentText())
+            + "</para></entry>");
         indent--;
         writeLine("</row>");
       }
@@ -270,6 +285,21 @@ public class BeanDocbookDoclet {
     return apidocUrl + "/" + qualifiedName.replace(".", "/") + ".html";
   }
 
+  private static String javadocToDocbook(String source) {
+    String dbSource = source.replace("<p>", "</para><para>");
+    dbSource = dbSource.replaceAll("<i>", "<emphasis>");
+    dbSource = dbSource.replaceAll("</i>", "</emphasis>");
+    dbSource = dbSource.replaceAll("<b>", "<emphasis role='bold'>");
+    dbSource = dbSource.replaceAll("</b>", "</emphasis>");
+    dbSource = dbSource.replaceAll("<ul>", "<itemizedlist>");
+    dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
+    dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
+    dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
+    dbSource = dbSource.replaceAll("<il>", "<listitem><para>");
+    dbSource = dbSource.replaceAll("</il>", "</para></listitem>");
+    return dbSource;
+  }
+
   private static String getProperty(MethodDoc methodDoc) {
     return methodDoc.name().substring(3, 4).toLowerCase()
         + methodDoc.name().substring(4);
@@ -301,6 +331,8 @@ public class BeanDocbookDoclet {
       String[] opt = options[i];
       if (opt[0].equals("-rootClassName")) {
         rootClassName = opt[1];
+      } else if (opt[0].equals("-maxDepth")) {
+        maxDepth = Integer.parseInt(opt[1]);
       } else if (opt[0].equals("-outputDir")) {
         outputDir = opt[1];
       } else if (opt[0].equals("-apidocUrl")) {
@@ -318,6 +350,8 @@ public class BeanDocbookDoclet {
    */
   public static int optionLength(String option) {
     if (option.equals("-rootClassName")) {
+      return 2;
+    } else if (option.equals("-maxDepth")) {
       return 2;
     } else if (option.equals("-outputDir")) {
       return 2;
