@@ -169,17 +169,17 @@ public class BeanDocbookDoclet {
         + "</ulink></code></para>");
     indent--;
     writeLine("</listitem>");
-    writeLine("<listitem>");
-    indent++;
     if (classDoc.superclassType().qualifiedTypeName()
         .startsWith("org.jspresso")) {
+      writeLine("<listitem>");
+      indent++;
       writeLine("<para><emphasis role='bold'>Inherits</emphasis> : <code><link linkend='"
           + classDoc.superclassType().qualifiedTypeName()
           + "'>"
           + classDoc.superclass().name() + "</link></code></para>");
+      indent--;
+      writeLine("</listitem>");
     }
-    indent--;
-    writeLine("</listitem>");
     indent--;
     writeLine("</itemizedlist>");
     writeLine("<para></para>");
