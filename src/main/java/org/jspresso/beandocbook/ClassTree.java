@@ -29,7 +29,7 @@ import com.sun.javadoc.ClassDoc;
  * @version $LastChangedRevision$
  * @author Vincent Vandenschrick
  */
-public class ClassTree {
+public class ClassTree implements Comparable<ClassTree> {
 
   private ClassDoc       root;
   private Set<ClassTree> subclasses;
@@ -69,5 +69,15 @@ public class ClassTree {
    */
   public Set<ClassTree> getSubclasses() {
     return subclasses;
+  }
+
+  /**
+   * Comparison based on root simple class name.
+   * <p>
+   * {@inheritDoc}
+   */
+  public int compareTo(ClassTree another) {
+    return getRoot().simpleTypeName().compareToIgnoreCase(
+        another.getRoot().simpleTypeName());
   }
 }

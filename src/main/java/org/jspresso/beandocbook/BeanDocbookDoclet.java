@@ -24,7 +24,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.sun.javadoc.ClassDoc;
@@ -43,13 +49,14 @@ import com.sun.javadoc.Type;
  */
 public class BeanDocbookDoclet {
 
-  private static String rootClassName;
-  private static int    maxDepth  = -1;
-  private static String apidocUrl;
-  private static String outputDir;
-  private static int    indent    = 0;
-  private static int    treeDepth = 0;
-  private static Writer writer;
+  private static String             rootClassName;
+  private static Collection<String> excludedSubtrees = new HashSet<String>();
+  private static int                maxDepth         = -1;
+  private static String             apidocUrl;
+  private static String             outputDir;
+  private static int                indent           = 0;
+  private static int                treeDepth        = 0;
+  private static Writer             writer;
 
   /**
    * Generate docbook part documenting beans.
@@ -126,8 +133,14 @@ public class BeanDocbookDoclet {
     }
     if (maxDepth < 0 || treeDepth < maxDepth) {
       treeDepth++;
-      for (ClassTree subclassTree : classTree.getSubclasses()) {
-        processClassTree(subclassTree);
+      List<ClassTree> children = new ArrayList<ClassTree>(classTree
+          .getSubclasses());
+      Collections.sort(children);
+      for (ClassTree subclassTree : children) {
+        if (!excludedSubtrees.contains(subclassTree.getRoot()
+            .qualifiedTypeName())) {
+          processClassTree(subclassTree);
+        }
       }
       treeDepth--;
     }
@@ -225,7 +238,7 @@ public class BeanDocbookDoclet {
               buff.append(typeArguments[i].simpleTypeName());
             }
             if (i < typeArguments.length - 1) {
-              buff.append(",");
+              buff.append("&#x200B;,");
             }
           }
           buff.append("&#x200B;&gt;&#x200B;");
@@ -337,6 +350,8 @@ public class BeanDocbookDoclet {
         outputDir = opt[1];
       } else if (opt[0].equals("-apidocUrl")) {
         apidocUrl = opt[1];
+      } else if (opt[0].equals("-excludeSubtrees")) {
+        excludedSubtrees = new HashSet<String>(Arrays.asList(opt[1].split(":")));
       }
     }
   }
@@ -356,6 +371,8 @@ public class BeanDocbookDoclet {
     } else if (option.equals("-outputDir")) {
       return 2;
     } else if (option.equals("-apidocUrl")) {
+      return 2;
+    } else if (option.equals("-excludeSubtrees")) {
       return 2;
     }
     return 0;
