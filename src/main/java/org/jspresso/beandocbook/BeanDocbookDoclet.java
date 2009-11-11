@@ -183,7 +183,7 @@ public class BeanDocbookDoclet {
     indent--;
     writeLine("</itemizedlist>");
     writeLine("<para></para>");
-    writeLine("<table colsep='1' rowsep='1' tabstyle='splitable'>");
+    writeLine("<table colsep='0' rowsep='1' tabstyle='splitable' frame='topbot'>");
     writeLine("<?dbfo keep-together='auto'?>");
     indent++;
     writeLine("<title>" + classDoc.name() + " properties</title>");
@@ -196,9 +196,9 @@ public class BeanDocbookDoclet {
     indent++;
     writeLine("<row>");
     indent++;
-    writeLine("<entry align='center'>Name</entry>");
-    writeLine("<entry align='center'>Type</entry>");
-    writeLine("<entry align='center'>Description</entry>");
+    writeLine("<entry align='left'>Name</entry>");
+    writeLine("<entry align='left'>Type</entry>");
+    writeLine("<entry align='left'>Description</entry>");
     indent--;
     writeLine("</row>");
     indent--;
