@@ -299,7 +299,8 @@ public class BeanDocbookDoclet {
   }
 
   private static String javadocToDocbook(String source) {
-    String dbSource = source.replace("<p>", "</para><para>");
+    String dbSource = source.replaceAll("<p>", "</para><para>");
+    dbSource = dbSource.replaceAll("<br>", "</para><para>");
     dbSource = dbSource.replaceAll("<i>", "<emphasis>");
     dbSource = dbSource.replaceAll("</i>", "</emphasis>");
     dbSource = dbSource.replaceAll("<b>", "<emphasis role='bold'>");
@@ -308,8 +309,10 @@ public class BeanDocbookDoclet {
     dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
     dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
     dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
-    dbSource = dbSource.replaceAll("<il>", "<listitem><para>");
-    dbSource = dbSource.replaceAll("</il>", "</para></listitem>");
+    dbSource = dbSource.replaceAll("<li>", "<listitem><para>");
+    dbSource = dbSource.replaceAll("</li>", "</para></listitem>");
+    dbSource = dbSource.replaceAll("<pre>", "<programlisting>");
+    dbSource = dbSource.replaceAll("</pre>", "</programlisting>");
     return dbSource;
   }
 
