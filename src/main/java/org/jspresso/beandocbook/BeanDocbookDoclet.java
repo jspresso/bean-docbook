@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,14 +50,41 @@ import com.sun.javadoc.Type;
  */
 public class BeanDocbookDoclet {
 
-  private static String             rootClassName;
-  private static Collection<String> excludedSubtrees = new HashSet<String>();
-  private static int                maxDepth         = -1;
-  private static String             apidocUrl;
-  private static String             outputDir;
-  private static int                indent           = 0;
-  private static int                treeDepth        = 0;
-  private static Writer             writer;
+  private static String                           rootClassName;
+  private static Collection<String>               excludedSubtrees;
+  private static Collection<String>               includedPackages;
+  private static int                              maxDepth;
+  private static String                           apidocUrl;
+  private static String                           outputDir;
+  private static int                              indent;
+  private static int                              treeDepth;
+  private static Writer                           writer;
+
+  private static Map<String, Map<String, String>> configSets = new HashMap<String, Map<String, String>>();
+
+  private static void setupConfigSet(Map<String, String> configSet) {
+    rootClassName = configSet.get("rootClassName");
+    if (configSet.containsKey("maxDepth")) {
+      maxDepth = Integer.parseInt(configSet.get("maxDepth"));
+    } else {
+      maxDepth = -1;
+    }
+    if (configSet.containsKey("includedPackages")) {
+      includedPackages = new HashSet<String>(Arrays.asList(configSet.get(
+          "includedPackages").split(":")));
+    } else {
+      includedPackages = null;
+    }
+    if (configSet.containsKey("excludedSubtrees")) {
+      excludedSubtrees = new HashSet<String>(Arrays.asList(configSet.get(
+          "excludedSubtrees").split(":")));
+    } else {
+      excludedSubtrees = new HashSet<String>();
+    }
+    indent = 0;
+    treeDepth = 0;
+    writer = null;
+  }
 
   /**
    * Generate docbook part documenting beans.
@@ -66,48 +94,51 @@ public class BeanDocbookDoclet {
    * @return true if succesful.
    */
   public static boolean start(RootDoc root) {
-    Map<String, ClassTree> classTrees = new LinkedHashMap<String, ClassTree>();
-    ClassTree rootClassTree = null;
     readOptions(root.options());
-    ClassDoc[] classes = root.classes();
-    try {
-      File f = new File(outputDir, rootClassName.substring(rootClassName
-          .lastIndexOf(".") + 1)
-          + ".xml");
-      f.getParentFile().mkdirs();
-      writer = new BufferedWriter(new OutputStreamWriter(
-          new FileOutputStream(f), "UTF-8"));
-      writeHeader();
-      for (ClassDoc classDoc : classes) {
-        if (classDoc.isPublic() && classDoc.isClass()) {
-          ClassTree classTree = new ClassTree(classDoc);
-          if (rootClassName.equals(classDoc.qualifiedName())) {
-            rootClassTree = classTree;
-          }
-          classTrees.put(classDoc.qualifiedTypeName(), classTree);
-        }
-      }
-      if (rootClassTree != null) {
-        for (Map.Entry<String, ClassTree> entry : classTrees.entrySet()) {
-          ClassTree parent = classTrees.get(entry.getValue().getRoot()
-              .superclassType().qualifiedTypeName());
-          if (parent != null) {
-            parent.getSubclasses().add(entry.getValue());
+    for (Map<String, String> configSet : configSets.values()) {
+      setupConfigSet(configSet);
+      Map<String, ClassTree> classTrees = new LinkedHashMap<String, ClassTree>();
+      ClassTree rootClassTree = null;
+      ClassDoc[] classes = root.classes();
+      try {
+        File f = new File(outputDir, rootClassName.substring(rootClassName
+            .lastIndexOf(".") + 1)
+            + ".xml");
+        f.getParentFile().mkdirs();
+        writer = new BufferedWriter(new OutputStreamWriter(
+            new FileOutputStream(f), "UTF-8"));
+        writeHeader();
+        for (ClassDoc classDoc : classes) {
+          if (classDoc.isPublic() && classDoc.isClass()) {
+            ClassTree classTree = new ClassTree(classDoc);
+            if (rootClassName.equals(classDoc.qualifiedName())) {
+              rootClassTree = classTree;
+            }
+            classTrees.put(classDoc.qualifiedTypeName(), classTree);
           }
         }
-        writeLine("<section>");
-        writeLine("<title>Reference for " + rootClassTree.getRoot().name()
-            + " hierarchy</title>");
-        indent++;
-        writeLine("<para></para>");
-        processClassTree(rootClassTree);
-        indent--;
-        writeLine("</section>");
+        if (rootClassTree != null) {
+          for (Map.Entry<String, ClassTree> entry : classTrees.entrySet()) {
+            ClassTree parent = classTrees.get(entry.getValue().getRoot()
+                .superclassType().qualifiedTypeName());
+            if (parent != null) {
+              parent.getSubclasses().add(entry.getValue());
+            }
+          }
+          writeLine("<section>");
+          writeLine("<title>Reference for " + rootClassTree.getRoot().name()
+              + " hierarchy</title>");
+          indent++;
+          writeLine("<para></para>");
+          processClassTree(rootClassTree);
+          indent--;
+          writeLine("</section>");
+        }
+        writer.flush();
+        writer.close();
+      } catch (Exception ex) {
+        ex.printStackTrace();
       }
-      writer.flush();
-      writer.close();
-    } catch (Exception ex) {
-      ex.printStackTrace();
     }
     return true;
   }
@@ -122,7 +153,7 @@ public class BeanDocbookDoclet {
     ClassDoc classDoc = classTree.getRoot();
     writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
     indent++;
-    processClassDoc(classDoc);
+    processClassDoc(classTree);
     // boolean childInSection = classTree.getSubclasses().size() > 1;
     boolean childInSection = false;
     if (!childInSection) {
@@ -137,8 +168,7 @@ public class BeanDocbookDoclet {
           .getSubclasses());
       Collections.sort(children);
       for (ClassTree subclassTree : children) {
-        if (!excludedSubtrees.contains(subclassTree.getRoot()
-            .qualifiedTypeName())) {
+        if (shouldBeDocumented(subclassTree.getRoot())) {
           processClassTree(subclassTree);
         }
       }
@@ -152,7 +182,24 @@ public class BeanDocbookDoclet {
     }
   }
 
-  private static void processClassDoc(ClassDoc classDoc) throws IOException {
+  private static boolean shouldBeDocumented(ClassDoc classDoc) {
+    if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
+      return false;
+    }
+    if (includedPackages == null) {
+      return true;
+    }
+    String pack = classDoc.containingPackage().name();
+    for (String includedPackage : includedPackages) {
+      if (pack.indexOf(includedPackage) > 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static void processClassDoc(ClassTree classTree) throws IOException {
+    ClassDoc classDoc = classTree.getRoot();
     writeLine("<title>" + classDoc.name() + "</title>");
     // writeLine("<para>");
     // writeLine("<?dbfo keep-with-next='always'?>");
@@ -173,10 +220,32 @@ public class BeanDocbookDoclet {
         .startsWith("org.jspresso")) {
       writeLine("<listitem>");
       indent++;
-      writeLine("<para><emphasis role='bold'>Inherits</emphasis> : <code><link linkend='"
+      writeLine("<para><emphasis role='bold'>Supertype</emphasis> : <code><link linkend='"
           + classDoc.superclassType().qualifiedTypeName()
           + "'>"
           + classDoc.superclass().name() + "</link></code></para>");
+      indent--;
+      writeLine("</listitem>");
+    }
+    if (classTree.getSubclasses().size() > 0) {
+      writeLine("<listitem>");
+      indent++;
+      StringBuffer buff = new StringBuffer();
+      List<ClassTree> children = new ArrayList<ClassTree>(classTree
+          .getSubclasses());
+      Collections.sort(children);
+      int i = 0;
+      for (ClassTree subclassTree : children) {
+        i++;
+        buff.append("<code><link linkend='"
+            + subclassTree.getRoot().qualifiedTypeName() + "'>"
+            + subclassTree.getRoot().name() + "</link></code>");
+        if (i < children.size()) {
+          buff.append(", ");
+        }
+      }
+      writeLine("<para><emphasis role='bold'>Subtypes</emphasis> : "
+          + buff.toString() + "</para>");
       indent--;
       writeLine("</listitem>");
     }
@@ -345,16 +414,32 @@ public class BeanDocbookDoclet {
   private static void readOptions(String[][] options) {
     for (int i = 0; i < options.length; i++) {
       String[] opt = options[i];
-      if (opt[0].equals("-rootClassName")) {
-        rootClassName = opt[1];
-      } else if (opt[0].equals("-maxDepth")) {
-        maxDepth = Integer.parseInt(opt[1]);
-      } else if (opt[0].equals("-outputDir")) {
+      String[] splittedOpt = opt[0].split("_");
+      String optionName = splittedOpt[0];
+
+      Map<String, String> configSet = null;
+      if (splittedOpt.length > 1) {
+        String configName = splittedOpt[1];
+        configSet = configSets.get(configName);
+        if (configSet == null) {
+          configSet = new HashMap<String, String>();
+          configSets.put(configName, configSet);
+        }
+      }
+      if (optionName.equals("-outputDir")) {
         outputDir = opt[1];
-      } else if (opt[0].equals("-apidocUrl")) {
+      } else if (optionName.equals("-apidocUrl")) {
         apidocUrl = opt[1];
-      } else if (opt[0].equals("-excludeSubtrees")) {
-        excludedSubtrees = new HashSet<String>(Arrays.asList(opt[1].split(":")));
+      } else if (configSet != null) {
+        if (optionName.equals("-rootClassName")) {
+          configSet.put("rootClassName", opt[1]);
+        } else if (optionName.equals("-maxDepth")) {
+          configSet.put("maxDepth", opt[1]);
+        } else if (optionName.equals("-excludedSubtrees")) {
+          configSet.put("excludedSubtrees", opt[1]);
+        } else if (optionName.equals("-includedPackages")) {
+          configSet.put("includedPackages", opt[1]);
+        }
       }
     }
   }
@@ -367,15 +452,17 @@ public class BeanDocbookDoclet {
    * @return the length of the option including the option itself.
    */
   public static int optionLength(String option) {
-    if (option.equals("-rootClassName")) {
+    if (option.startsWith("-rootClassName")) {
       return 2;
-    } else if (option.equals("-maxDepth")) {
+    } else if (option.startsWith("-maxDepth")) {
+      return 2;
+    } else if (option.startsWith("-excludedSubtrees")) {
+      return 2;
+    } else if (option.startsWith("-includedPackages")) {
       return 2;
     } else if (option.equals("-outputDir")) {
       return 2;
     } else if (option.equals("-apidocUrl")) {
-      return 2;
-    } else if (option.equals("-excludeSubtrees")) {
       return 2;
     }
     return 0;
