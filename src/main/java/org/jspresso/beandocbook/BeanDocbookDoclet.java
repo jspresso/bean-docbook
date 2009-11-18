@@ -276,7 +276,7 @@ public class BeanDocbookDoclet {
     indent++;
     boolean atleastOneRow = false;
     for (MethodDoc methodDoc : classDoc.methods()) {
-      if (methodDoc.isPublic() && isSetter(methodDoc)) {
+      if (isSetterForRefDoc(methodDoc)) {
         atleastOneRow = true;
         writeLine("<row>");
         indent++;
@@ -343,6 +343,11 @@ public class BeanDocbookDoclet {
     writeLine("</tgroup>");
     indent--;
     writeLine("</table>");
+  }
+
+  private static boolean isSetterForRefDoc(MethodDoc methodDoc) {
+    return methodDoc.isPublic() && isSetter(methodDoc)
+        && methodDoc.tags("@internal").length == 0;
   }
 
   private static String hyphenateDottedString(String source) {
