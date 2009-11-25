@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import com.sun.javadoc.ClassDoc;
 import com.sun.javadoc.LanguageVersion;
@@ -182,7 +183,17 @@ public class BeanDocbookDoclet {
     }
   }
 
+  private static boolean isInternal(ClassDoc classDoc) {
+    if (classDoc.tags("@internal").length > 0) {
+      return true;
+    }
+    return false;
+  }
+
   private static boolean shouldBeDocumented(ClassDoc classDoc) {
+    if (isInternal(classDoc)) {
+      return false;
+    }
     if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
       return false;
     }
@@ -191,7 +202,7 @@ public class BeanDocbookDoclet {
     }
     String pack = classDoc.containingPackage().name();
     for (String includedPackage : includedPackages) {
-      if (pack.indexOf(includedPackage) > 0) {
+      if (pack.indexOf(includedPackage) >= 0) {
         return true;
       }
     }
@@ -204,7 +215,6 @@ public class BeanDocbookDoclet {
     // writeLine("<para>");
     // writeLine("<?dbfo keep-with-next='always'?>");
     // writeLine("</para>");
-    writeLine("<para>" + javadocToDocbook(classDoc.commentText()) + "</para>");
     writeLine("<itemizedlist>");
     indent++;
     writeLine("<listitem>");
@@ -220,7 +230,7 @@ public class BeanDocbookDoclet {
         .startsWith("org.jspresso")) {
       writeLine("<listitem>");
       indent++;
-      writeLine("<para><emphasis role='bold'>Supertype</emphasis> : <code><link linkend='"
+      writeLine("<para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
           + classDoc.superclassType().qualifiedTypeName()
           + "'>"
           + classDoc.superclass().name() + "</link></code></para>");
@@ -234,23 +244,29 @@ public class BeanDocbookDoclet {
       List<ClassTree> children = new ArrayList<ClassTree>(classTree
           .getSubclasses());
       Collections.sort(children);
-      int i = 0;
+      boolean first = true;
       for (ClassTree subclassTree : children) {
-        i++;
-        buff.append("<code><link linkend='"
-            + subclassTree.getRoot().qualifiedTypeName() + "'>"
-            + subclassTree.getRoot().name() + "</link></code>");
-        if (i < children.size()) {
-          buff.append(", ");
+        if (!isInternal(subclassTree.getRoot())) {
+          if (!first) {
+            buff.append(", ");
+          }
+          first = false;
+          buff.append("<code><link linkend='"
+              + subclassTree.getRoot().qualifiedTypeName() + "'>"
+              + subclassTree.getRoot().name() + "</link></code>");
         }
       }
-      writeLine("<para><emphasis role='bold'>Subtypes</emphasis> : "
+      writeLine("<para><emphasis role='bold'>Sub-types</emphasis> : "
           + buff.toString() + "</para>");
       indent--;
       writeLine("</listitem>");
     }
     indent--;
     writeLine("</itemizedlist>");
+    writeLine("<para></para>");
+    writeLine("<para></para>");
+    writeLine("<para>" + javadocToDocbook(classDoc.commentText()) + "</para>");
+    writeLine("<para></para>");
     writeLine("<para></para>");
     writeLine("<table colsep='0' rowsep='1' tabstyle='splitable' frame='topbot'>");
     writeLine("<?dbfo keep-together='auto'?>");
@@ -260,7 +276,7 @@ public class BeanDocbookDoclet {
     indent++;
     writeLine("<colspec colname='name' colwidth='1*' />");
     writeLine("<colspec colname='type' colwidth='1*' />");
-    writeLine("<colspec colname='description' colwidth='2*' />");
+    writeLine("<colspec colname='description' colwidth='3*' />");
     writeLine("<thead>");
     indent++;
     writeLine("<row>");
@@ -275,60 +291,62 @@ public class BeanDocbookDoclet {
     writeLine("<tbody>");
     indent++;
     boolean atleastOneRow = false;
+    Map<String, MethodDoc> propertiesMap = new TreeMap<String, MethodDoc>();
     for (MethodDoc methodDoc : classDoc.methods()) {
       if (isSetterForRefDoc(methodDoc)) {
         atleastOneRow = true;
-        writeLine("<row>");
-        indent++;
-        String property = getProperty(methodDoc);
-        writeLine("<entry>" + property + "</entry>");
-        Parameter param = methodDoc.parameters()[0];
-        ParameterizedType pType = param.type().asParameterizedType();
-        if (pType != null) {
-          Type[] typeArguments = pType.asParameterizedType().typeArguments();
-          StringBuffer buff = new StringBuffer();
-          if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
+        propertiesMap.put(getProperty(methodDoc), methodDoc);
+      }
+    }
+    for (Map.Entry<String, MethodDoc> propEntry : propertiesMap.entrySet()) {
+      writeLine("<row>");
+      indent++;
+      writeLine("<entry>" + propEntry.getKey() + "</entry>");
+      Parameter param = propEntry.getValue().parameters()[0];
+      ParameterizedType pType = param.type().asParameterizedType();
+      if (pType != null) {
+        Type[] typeArguments = pType.asParameterizedType().typeArguments();
+        StringBuffer buff = new StringBuffer();
+        if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
+          buff.append("<ulink url='"
+              + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+              + hyphenateCamelCase(param.type().simpleTypeName()) + "</ulink>");
+        } else {
+          buff.append(hyphenateCamelCase(param.type().simpleTypeName()));
+        }
+        buff.append("&#x200B;&lt;&#x200B;");
+        for (int i = 0; i < typeArguments.length; i++) {
+          if (typeArguments[i].qualifiedTypeName().startsWith("org.jspresso")) {
             buff.append("<ulink url='"
-                + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
-                + hyphenateCamelCase(param.type().simpleTypeName())
+                + computeJavadocUrl(typeArguments[i].qualifiedTypeName())
+                + "'>" + hyphenateCamelCase(typeArguments[i].simpleTypeName())
                 + "</ulink>");
           } else {
-            buff.append(hyphenateCamelCase(param.type().simpleTypeName()));
+            buff.append(typeArguments[i].simpleTypeName());
           }
-          buff.append("&#x200B;&lt;&#x200B;");
-          for (int i = 0; i < typeArguments.length; i++) {
-            if (typeArguments[i].qualifiedTypeName().startsWith("org.jspresso")) {
-              buff.append("<ulink url='"
-                  + computeJavadocUrl(typeArguments[i].qualifiedTypeName())
-                  + "'>"
-                  + hyphenateCamelCase(typeArguments[i].simpleTypeName())
-                  + "</ulink>");
-            } else {
-              buff.append(typeArguments[i].simpleTypeName());
-            }
-            if (i < typeArguments.length - 1) {
-              buff.append("&#x200B;,");
-            }
-          }
-          buff.append("&#x200B;&gt;&#x200B;");
-          writeLine("<entry><code>" + buff.toString() + "</code></entry>");
-        } else {
-          if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
-            writeLine("<entry><code><ulink url='"
-                + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
-                + hyphenateCamelCase(param.type().simpleTypeName())
-                + "</ulink></code></entry>");
-          } else {
-            writeLine("<entry><code>"
-                + hyphenateCamelCase(param.type().simpleTypeName())
-                + "</code></entry>");
+          if (i < typeArguments.length - 1) {
+            buff.append("&#x200B;,");
           }
         }
-        writeLine("<entry><para>" + javadocToDocbook(methodDoc.commentText())
-            + "</para></entry>");
-        indent--;
-        writeLine("</row>");
+        buff.append("&#x200B;&gt;&#x200B;");
+        writeLine("<entry><code>" + buff.toString() + "</code></entry>");
+      } else {
+        if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
+          writeLine("<entry><code><ulink url='"
+              + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+              + hyphenateCamelCase(param.type().simpleTypeName())
+              + "</ulink></code></entry>");
+        } else {
+          writeLine("<entry><code>"
+              + hyphenateCamelCase(param.type().simpleTypeName())
+              + "</code></entry>");
+        }
       }
+      writeLine("<entry><para>"
+          + javadocToDocbook(propEntry.getValue().commentText())
+          + "</para></entry>");
+      indent--;
+      writeLine("</row>");
     }
     if (!atleastOneRow) {
       writeLine("<row>");
