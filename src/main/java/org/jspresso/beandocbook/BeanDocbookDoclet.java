@@ -272,17 +272,15 @@ public class BeanDocbookDoclet {
     writeLine("<?dbfo keep-together='auto'?>");
     indent++;
     writeLine("<title>" + classDoc.name() + " properties</title>");
-    writeLine("<tgroup cols='3'>");
+    writeLine("<tgroup cols='2'>");
     indent++;
-    writeLine("<colspec colname='name' colwidth='1*' />");
-    writeLine("<colspec colname='type' colwidth='1*' />");
-    writeLine("<colspec colname='description' colwidth='3*' />");
+    writeLine("<colspec colname='property' colwidth='1*' />");
+    writeLine("<colspec colname='description' colwidth='2*' />");
     writeLine("<thead>");
     indent++;
     writeLine("<row>");
     indent++;
-    writeLine("<entry align='left'>Name</entry>");
-    writeLine("<entry align='left'>Type</entry>");
+    writeLine("<entry align='left'>Property</entry>");
     writeLine("<entry align='left'>Description</entry>");
     indent--;
     writeLine("</row>");
@@ -301,47 +299,45 @@ public class BeanDocbookDoclet {
     for (Map.Entry<String, MethodDoc> propEntry : propertiesMap.entrySet()) {
       writeLine("<row>");
       indent++;
-      writeLine("<entry>" + propEntry.getKey() + "</entry>");
       Parameter param = propEntry.getValue().parameters()[0];
       ParameterizedType pType = param.type().asParameterizedType();
+      StringBuffer typeBuff = new StringBuffer();
       if (pType != null) {
         Type[] typeArguments = pType.asParameterizedType().typeArguments();
-        StringBuffer buff = new StringBuffer();
         if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
-          buff.append("<ulink url='"
+          typeBuff.append("<ulink url='"
               + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
               + hyphenateCamelCase(param.type().simpleTypeName()) + "</ulink>");
         } else {
-          buff.append(hyphenateCamelCase(param.type().simpleTypeName()));
+          typeBuff.append(hyphenateCamelCase(param.type().simpleTypeName()));
         }
-        buff.append("&#x200B;&lt;&#x200B;");
+        typeBuff.append("&#x200B;&lt;&#x200B;");
         for (int i = 0; i < typeArguments.length; i++) {
           if (typeArguments[i].qualifiedTypeName().startsWith("org.jspresso")) {
-            buff.append("<ulink url='"
+            typeBuff.append("<ulink url='"
                 + computeJavadocUrl(typeArguments[i].qualifiedTypeName())
                 + "'>" + hyphenateCamelCase(typeArguments[i].simpleTypeName())
                 + "</ulink>");
           } else {
-            buff.append(typeArguments[i].simpleTypeName());
+            typeBuff.append(typeArguments[i].simpleTypeName());
           }
           if (i < typeArguments.length - 1) {
-            buff.append("&#x200B;,");
+            typeBuff.append("&#x200B;,");
           }
         }
-        buff.append("&#x200B;&gt;&#x200B;");
-        writeLine("<entry><code>" + buff.toString() + "</code></entry>");
+        typeBuff.append("&#x200B;&gt;&#x200B;");
       } else {
         if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
-          writeLine("<entry><code><ulink url='"
+          typeBuff.append("<ulink url='"
               + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
-              + hyphenateCamelCase(param.type().simpleTypeName())
-              + "</ulink></code></entry>");
+              + hyphenateCamelCase(param.type().simpleTypeName()) + "</ulink>");
         } else {
-          writeLine("<entry><code>"
-              + hyphenateCamelCase(param.type().simpleTypeName())
-              + "</code></entry>");
+          typeBuff.append(hyphenateCamelCase(param.type().simpleTypeName()));
         }
       }
+      writeLine("<entry><para><emphasis role='bold'>" + propEntry.getKey()
+          + "</emphasis></para><para><code>" + typeBuff.toString()
+          + "</code></para></entry>");
       writeLine("<entry><para>"
           + javadocToDocbook(propEntry.getValue().commentText())
           + "</para></entry>");
@@ -351,7 +347,7 @@ public class BeanDocbookDoclet {
     if (!atleastOneRow) {
       writeLine("<row>");
       indent++;
-      writeLine("<entry namest='name' nameend='description'>This class does not have any specific property.</entry>");
+      writeLine("<entry namest='property' nameend='description'>This class does not have any specific property.</entry>");
       indent--;
       writeLine("</row>");
     }
