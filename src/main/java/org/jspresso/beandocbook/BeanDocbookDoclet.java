@@ -323,9 +323,9 @@ public class BeanDocbookDoclet {
           typeBuff.append(hyphenateCamelCase(param.type().simpleTypeName()));
         }
       }
-      writeLine("<entry><para><emphasis role='bold'>" + propEntry.getKey()
-          + "</emphasis></para><para><code>" + typeBuff.toString()
-          + "</code></para></entry>");
+      writeLine("<entry valign='middle'><para><emphasis role='bold'>"
+          + propEntry.getKey() + "</emphasis></para><para><code>"
+          + typeBuff.toString() + "</code></para></entry>");
       writeLine("<entry><para>"
           + javadocToDocbook(propEntry.getValue().commentText())
           + "</para></entry>");
