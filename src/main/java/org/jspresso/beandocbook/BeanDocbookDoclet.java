@@ -183,15 +183,18 @@ public class BeanDocbookDoclet {
     }
   }
 
-  private static boolean isInternal(ClassDoc classDoc) {
+  private static boolean isInternalOrDeprecated(ClassDoc classDoc) {
     if (classDoc.tags("@internal").length > 0) {
+      return true;
+    }
+    if (classDoc.tags("@deprecated").length > 0) {
       return true;
     }
     return false;
   }
 
   private static boolean shouldBeDocumented(ClassDoc classDoc) {
-    if (isInternal(classDoc)) {
+    if (isInternalOrDeprecated(classDoc)) {
       return false;
     }
     if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
@@ -236,7 +239,7 @@ public class BeanDocbookDoclet {
       Collections.sort(children);
       boolean first = true;
       for (ClassTree subclassTree : children) {
-        if (!isInternal(subclassTree.getRoot())) {
+        if (!isInternalOrDeprecated(subclassTree.getRoot())) {
           if (!first) {
             buff.append(", ");
           }
@@ -349,7 +352,8 @@ public class BeanDocbookDoclet {
 
   private static boolean isSetterForRefDoc(MethodDoc methodDoc) {
     return methodDoc.isPublic() && isSetter(methodDoc)
-        && methodDoc.tags("@internal").length == 0;
+        && methodDoc.tags("@internal").length == 0
+        && methodDoc.tags("@deprecated").length == 0;
   }
 
   private static String hyphenateDottedString(String source) {
