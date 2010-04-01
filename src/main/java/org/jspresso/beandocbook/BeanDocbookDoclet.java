@@ -152,16 +152,18 @@ public class BeanDocbookDoclet {
 
   private static void processClassTree(ClassTree classTree) throws IOException {
     ClassDoc classDoc = classTree.getRoot();
-    writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
-    indent++;
-    processClassDoc(classTree);
     // boolean childInSection = classTree.getSubclasses().size() > 1;
     boolean childInSection = false;
-    if (!childInSection) {
-      writeLine("<para></para>");
-      writeLine("<para></para>");
-      indent--;
-      writeLine("</section>");
+    if (!isInternalOrDeprecated(classDoc)) {
+      writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
+      indent++;
+      processClassDoc(classTree);
+      if (!childInSection) {
+        writeLine("<para></para>");
+        writeLine("<para></para>");
+        indent--;
+        writeLine("</section>");
+      }
     }
     if (maxDepth < 0 || treeDepth < maxDepth) {
       treeDepth++;
@@ -169,17 +171,19 @@ public class BeanDocbookDoclet {
           .getSubclasses());
       Collections.sort(children);
       for (ClassTree subclassTree : children) {
-        if (shouldBeDocumented(subclassTree.getRoot())) {
+        if (shouldTreeBeDocumented(subclassTree.getRoot())) {
           processClassTree(subclassTree);
         }
       }
       treeDepth--;
     }
-    if (childInSection) {
-      writeLine("<para></para>");
-      writeLine("<para></para>");
-      indent--;
-      writeLine("</section>");
+    if (!isInternalOrDeprecated(classDoc)) {
+      if (childInSection) {
+        writeLine("<para></para>");
+        writeLine("<para></para>");
+        indent--;
+        writeLine("</section>");
+      }
     }
   }
 
@@ -193,10 +197,11 @@ public class BeanDocbookDoclet {
     return false;
   }
 
-  private static boolean shouldBeDocumented(ClassDoc classDoc) {
-    if (isInternalOrDeprecated(classDoc)) {
-      return false;
-    }
+  private static boolean shouldTreeBeDocumented(ClassDoc classDoc) {
+    // handled individually for each class.
+    // if (isInternalOrDeprecated(classDoc)) {
+    // return false;
+    // }
     if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
       return false;
     }
