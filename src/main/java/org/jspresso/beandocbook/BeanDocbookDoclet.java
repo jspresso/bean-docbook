@@ -225,17 +225,17 @@ public class BeanDocbookDoclet {
     // writeLine("</para>");
     writeLine("<itemizedlist>");
     indent++;
-    writeLine("<listitem><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
+    writeLine("<listitem><para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
         + computeJavadocUrl(classDoc.qualifiedTypeName())
         + "'>"
         + hyphenateDottedString(classDoc.qualifiedTypeName())
-        + "</ulink></code></listitem>");
+        + "</ulink></code></para></listitem>");
     if (classDoc.superclassType().qualifiedTypeName()
         .startsWith("org.jspresso")) {
-      writeLine("<listitem><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
+      writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
           + classDoc.superclassType().qualifiedTypeName()
           + "'>"
-          + classDoc.superclass().name() + "</link></code></listitem>");
+          + classDoc.superclass().name() + "</link></code></para></listitem>");
     }
     if (classTree.getSubclasses().size() > 0) {
       StringBuffer buff = new StringBuffer();
@@ -254,8 +254,8 @@ public class BeanDocbookDoclet {
               + subclassTree.getRoot().name() + "</link></code>");
         }
       }
-      writeLine("<listitem><emphasis role='bold'>Sub-types</emphasis> : "
-          + buff.toString() + "</listitem>");
+      writeLine("<listitem><para><emphasis role='bold'>Sub-types</emphasis> : "
+          + buff.toString() + "</para></listitem>");
     }
     indent--;
     writeLine("</itemizedlist>");
@@ -394,8 +394,8 @@ public class BeanDocbookDoclet {
     dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
     dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
     dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
-    dbSource = dbSource.replaceAll("<li>", "<listitem>");
-    dbSource = dbSource.replaceAll("</li>", "</listitem>");
+    dbSource = dbSource.replaceAll("<li>", "<listitem><para>");
+    dbSource = dbSource.replaceAll("</li>", "</para></listitem>");
     dbSource = dbSource.replaceAll("<pre>", "<programlisting>");
     dbSource = dbSource.replaceAll("</pre>", "</programlisting>");
     return dbSource;
