@@ -232,10 +232,15 @@ public class BeanDocbookDoclet {
         + "</ulink></code></para></listitem>");
     if (classDoc.superclassType().qualifiedTypeName()
         .startsWith("org.jspresso")) {
-      writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
-          + classDoc.superclassType().qualifiedTypeName()
-          + "'>"
-          + classDoc.superclass().name() + "</link></code></para></listitem>");
+      if (!isInternalOrDeprecated(classDoc.superclassType().asClassDoc())) {
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
+            + classDoc.superclassType().qualifiedTypeName()
+            + "'>"
+            + classDoc.superclass().name() + "</link></code></para></listitem>");
+      } else {
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code>"
+            + classDoc.superclass().name() + "</code></para></listitem>");
+      }
     }
     if (classTree.getSubclasses().size() > 0) {
       StringBuffer buff = new StringBuffer();
