@@ -9,7 +9,7 @@
   </parent>
   <groupId>org.jspresso.tools</groupId>
   <artifactId>jspresso-beandocbook</artifactId>
-  <version>3.5.0</version>
+  <version>3.5-SNAPSHOT</version>
   <name>Jspresso BeanDocbook</name>
   <description>Bean docbook doclet for the Jspresso documentation</description>
 
@@ -32,7 +32,7 @@
     </license>
   </licenses>
   <scm>
-    <connection>scm:svn:https://svn.jspresso.org/jspresso/beandocbook/tags/jspresso-beandocbook-3.5.0</connection>
+    <connection>scm:svn:https://svn.jspresso.org/jspresso/beandocbook/trunk</connection>
   </scm>
   <developers>
     <developer>
