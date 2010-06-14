@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.jspresso.framework</groupId>
     <artifactId>jspresso-root</artifactId>
-    <version>3.0.1-SNAPSHOT</version>
+    <version>3.5.0</version>
   </parent>
   <groupId>org.jspresso.tools</groupId>
   <artifactId>jspresso-beandocbook</artifactId>
@@ -53,6 +53,10 @@
       <url>scp://repository.jspresso.org/var/maven/repositories/maven2-snapshots</url>
       <uniqueVersion>false</uniqueVersion>
     </snapshotRepository>
+    <site>
+      <id>local-site</id>
+      <url>file:///tmp/jspresso/bean-docbook/site</url>
+    </site>
   </distributionManagement>
 
   <profiles>
