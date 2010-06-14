@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2009 Vincent Vandenschrick. All rights reserved.
+ * Copyright (c) 2005-2010 Vincent Vandenschrick. All rights reserved.
  *
  *  This file is part of the Jspresso framework.
  *
@@ -152,16 +152,18 @@ public class BeanDocbookDoclet {
 
   private static void processClassTree(ClassTree classTree) throws IOException {
     ClassDoc classDoc = classTree.getRoot();
-    writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
-    indent++;
-    processClassDoc(classTree);
     // boolean childInSection = classTree.getSubclasses().size() > 1;
     boolean childInSection = false;
-    if (!childInSection) {
-      writeLine("<para></para>");
-      writeLine("<para></para>");
-      indent--;
-      writeLine("</section>");
+    if (!isInternalOrDeprecated(classDoc)) {
+      writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
+      indent++;
+      processClassDoc(classTree);
+      if (!childInSection) {
+        writeLine("<para></para>");
+        writeLine("<para></para>");
+        indent--;
+        writeLine("</section>");
+      }
     }
     if (maxDepth < 0 || treeDepth < maxDepth) {
       treeDepth++;
@@ -169,17 +171,19 @@ public class BeanDocbookDoclet {
           .getSubclasses());
       Collections.sort(children);
       for (ClassTree subclassTree : children) {
-        if (shouldBeDocumented(subclassTree.getRoot())) {
+        if (shouldTreeBeDocumented(subclassTree.getRoot())) {
           processClassTree(subclassTree);
         }
       }
       treeDepth--;
     }
-    if (childInSection) {
-      writeLine("<para></para>");
-      writeLine("<para></para>");
-      indent--;
-      writeLine("</section>");
+    if (!isInternalOrDeprecated(classDoc)) {
+      if (childInSection) {
+        writeLine("<para></para>");
+        writeLine("<para></para>");
+        indent--;
+        writeLine("</section>");
+      }
     }
   }
 
@@ -193,10 +197,11 @@ public class BeanDocbookDoclet {
     return false;
   }
 
-  private static boolean shouldBeDocumented(ClassDoc classDoc) {
-    if (isInternalOrDeprecated(classDoc)) {
-      return false;
-    }
+  private static boolean shouldTreeBeDocumented(ClassDoc classDoc) {
+    // handled individually for each class.
+    // if (isInternalOrDeprecated(classDoc)) {
+    // return false;
+    // }
     if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
       return false;
     }
@@ -220,17 +225,22 @@ public class BeanDocbookDoclet {
     // writeLine("</para>");
     writeLine("<itemizedlist>");
     indent++;
-    writeLine("<listitem><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
+    writeLine("<listitem><para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
         + computeJavadocUrl(classDoc.qualifiedTypeName())
         + "'>"
         + hyphenateDottedString(classDoc.qualifiedTypeName())
-        + "</ulink></code></listitem>");
+        + "</ulink></code></para></listitem>");
     if (classDoc.superclassType().qualifiedTypeName()
         .startsWith("org.jspresso")) {
-      writeLine("<listitem><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
-          + classDoc.superclassType().qualifiedTypeName()
-          + "'>"
-          + classDoc.superclass().name() + "</link></code></listitem>");
+      if (!isInternalOrDeprecated(classDoc.superclassType().asClassDoc())) {
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
+            + classDoc.superclassType().qualifiedTypeName()
+            + "'>"
+            + classDoc.superclass().name() + "</link></code></para></listitem>");
+      } else {
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code>"
+            + classDoc.superclass().name() + "</code></para></listitem>");
+      }
     }
     if (classTree.getSubclasses().size() > 0) {
       StringBuffer buff = new StringBuffer();
@@ -249,8 +259,8 @@ public class BeanDocbookDoclet {
               + subclassTree.getRoot().name() + "</link></code>");
         }
       }
-      writeLine("<listitem><emphasis role='bold'>Sub-types</emphasis> : "
-          + buff.toString() + "</listitem>");
+      writeLine("<listitem><para><emphasis role='bold'>Sub-types</emphasis> : "
+          + buff.toString() + "</para></listitem>");
     }
     indent--;
     writeLine("</itemizedlist>");
@@ -389,8 +399,8 @@ public class BeanDocbookDoclet {
     dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
     dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
     dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
-    dbSource = dbSource.replaceAll("<li>", "<listitem>");
-    dbSource = dbSource.replaceAll("</li>", "</listitem>");
+    dbSource = dbSource.replaceAll("<li>", "<listitem><para>");
+    dbSource = dbSource.replaceAll("</li>", "</para></listitem>");
     dbSource = dbSource.replaceAll("<pre>", "<programlisting>");
     dbSource = dbSource.replaceAll("</pre>", "</programlisting>");
     return dbSource;
