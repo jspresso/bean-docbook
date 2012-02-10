@@ -76,6 +76,7 @@ public class ClassTree implements Comparable<ClassTree> {
    * <p>
    * {@inheritDoc}
    */
+  @Override
   public int compareTo(ClassTree another) {
     return getRoot().simpleTypeName().compareToIgnoreCase(
         another.getRoot().simpleTypeName());
