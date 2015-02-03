@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2012 Vincent Vandenschrick. All rights reserved.
+ * Copyright (c) 2005-2011 Vincent Vandenschrick. All rights reserved.
  *
  *  This file is part of the Jspresso framework.
  *
@@ -26,7 +26,7 @@ import com.sun.javadoc.ClassDoc;
 /**
  * Data structure to represent a class tree.
  * 
- * @version $LastChangedRevision$
+ * @version $LastChangedRevision: 3701 $
  * @author Vincent Vandenschrick
  */
 public class ClassTree implements Comparable<ClassTree> {
@@ -76,7 +76,6 @@ public class ClassTree implements Comparable<ClassTree> {
    * <p>
    * {@inheritDoc}
    */
-  @Override
   public int compareTo(ClassTree another) {
     return getRoot().simpleTypeName().compareToIgnoreCase(
         another.getRoot().simpleTypeName());

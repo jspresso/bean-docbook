@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2012 Vincent Vandenschrick. All rights reserved.
+ * Copyright (c) 2005-2011 Vincent Vandenschrick. All rights reserved.
  *
  *  This file is part of the Jspresso framework.
  *
@@ -46,7 +46,7 @@ import com.sun.javadoc.Type;
 /**
  * A simple doclet to generate docbook from javadoc information.
  * 
- * @version $LastChangedRevision$
+ * @version $LastChangedRevision: 3701 $
  * @author Vincent Vandenschrick
  */
 public class BeanDocbookDoclet {

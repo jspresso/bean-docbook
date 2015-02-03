@@ -32,7 +32,7 @@
     </license>
   </licenses>
   <scm>
-    <connection>scm:svn:https://svn.jspresso.org/jspresso/beandocbook/trunk</connection>
+    <connection>scm:git:https://github.com/jspresso/bean-docbook.git</connection>
   </scm>
   <developers>
     <developer>
