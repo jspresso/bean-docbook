@@ -18,25 +18,14 @@
  */
 package org.jspresso.beandocbook;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.LanguageVersion;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.Parameter;
 import com.sun.javadoc.ParameterizedType;
@@ -45,179 +34,136 @@ import com.sun.javadoc.Type;
 
 /**
  * A simple doclet to generate docbook from javadoc information.
- * 
+ *
  * @version $LastChangedRevision: 3701 $
  * @author Vincent Vandenschrick
  */
-public class BeanDocbookDoclet {
+public class BeanDocbookDoclet extends AbstractBeanDoclet {
 
-  private static String                           rootClassName;
-  private static Collection<String>               excludedSubtrees;
-  private static Collection<String>               includedPackages;
-  private static int                              maxDepth;
-  private static String                           apidocUrl;
-  private static String                           outputDir;
-  private static int                              indent;
-  private static int                              treeDepth;
-  private static Writer                           writer;
-
-  private static Map<String, Map<String, String>> configSets = new HashMap<String, Map<String, String>>();
-
-  private static void setupConfigSet(Map<String, String> configSet) {
-    rootClassName = configSet.get("rootClassName");
-    if (configSet.containsKey("maxDepth")) {
-      maxDepth = Integer.parseInt(configSet.get("maxDepth"));
-    } else {
-      maxDepth = -1;
-    }
-    if (configSet.containsKey("includedPackages")) {
-      includedPackages = new HashSet<String>(Arrays.asList(configSet.get(
-          "includedPackages").split(":")));
-    } else {
-      includedPackages = null;
-    }
-    if (configSet.containsKey("excludedSubtrees")) {
-      excludedSubtrees = new HashSet<String>(Arrays.asList(configSet.get(
-          "excludedSubtrees").split(":")));
-    } else {
-      excludedSubtrees = new HashSet<String>();
-    }
-    indent = 0;
-    treeDepth = 0;
-    writer = null;
-  }
+  private int indent;
 
   /**
    * Generate docbook part documenting beans.
-   * 
+   *
    * @param root
    *          the root doc.
    * @return true if succesful.
    */
   public static boolean start(RootDoc root) {
-    readOptions(root.options());
-    for (Map<String, String> configSet : configSets.values()) {
-      setupConfigSet(configSet);
-      Map<String, ClassTree> classTrees = new LinkedHashMap<String, ClassTree>();
-      ClassTree rootClassTree = null;
-      ClassDoc[] classes = root.classes();
-      try {
-        File f = new File(outputDir, rootClassName.substring(rootClassName
-            .lastIndexOf(".") + 1)
-            + ".xml");
-        f.getParentFile().mkdirs();
-        writer = new BufferedWriter(new OutputStreamWriter(
-            new FileOutputStream(f), "UTF-8"));
-        writeHeader();
-        for (ClassDoc classDoc : classes) {
-          if (classDoc.isPublic() && classDoc.isClass()) {
-            ClassTree classTree = new ClassTree(classDoc);
-            if (rootClassName.equals(classDoc.qualifiedName())) {
-              rootClassTree = classTree;
-            }
-            classTrees.put(classDoc.qualifiedTypeName(), classTree);
-          }
-        }
-        if (rootClassTree != null) {
-          for (Map.Entry<String, ClassTree> entry : classTrees.entrySet()) {
-            ClassTree parent = classTrees.get(entry.getValue().getRoot()
-                .superclassType().qualifiedTypeName());
-            if (parent != null) {
-              parent.getSubclasses().add(entry.getValue());
-            }
-          }
-          writeLine("<section>");
-          writeLine("<title>Reference for " + rootClassTree.getRoot().name()
-              + " hierarchy</title>");
-          indent++;
-          writeLine("<para></para>");
-          processClassTree(rootClassTree);
-          indent--;
-          writeLine("</section>");
-        }
-        writer.flush();
-        writer.close();
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-    }
-    return true;
+    AbstractBeanDoclet.setThreadInstance(new BeanDocbookDoclet());
+    return AbstractBeanDoclet.start(root);
   }
 
-  private static void writeHeader() throws IOException {
+  @Override
+  protected void writeHeader() throws IOException {
     writeLine("<?xml version='1.0' encoding='UTF-8'?>");
     writeLine("<!DOCTYPE chapter PUBLIC '-//OASIS//DTD DocBook XML V4.4//EN'");
     writeLine("  'http://www.oasis-open.org/docbook/xml/4.4/docbookx.dtd'>");
   }
 
-  private static void processClassTree(ClassTree classTree) throws IOException {
-    ClassDoc classDoc = classTree.getRoot();
-    // boolean childInSection = classTree.getSubclasses().size() > 1;
-    boolean childInSection = false;
-    if (!isInternalOrDeprecated(classDoc)) {
-      writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
-      indent++;
-      processClassDoc(classTree);
-      if (!childInSection) {
-        writeLine("<para></para>");
-        writeLine("<para></para>");
-        indent--;
-        writeLine("</section>");
-      }
+  /**
+   * Write line.
+   *
+   * @param content
+   *     the content
+   * @throws IOException
+   *     the iO exception
+   */
+  @Override
+  protected void writeLine(String content) throws IOException {
+    for (int i = 0; i < indent; i++) {
+      writer.write("  ");
     }
-    if (maxDepth < 0 || treeDepth < maxDepth) {
-      treeDepth++;
-      List<ClassTree> children = new ArrayList<ClassTree>(classTree
-          .getSubclasses());
-      Collections.sort(children);
-      for (ClassTree subclassTree : children) {
-        if (shouldTreeBeDocumented(subclassTree.getRoot())) {
-          processClassTree(subclassTree);
-        }
-      }
-      treeDepth--;
-    }
-    if (!isInternalOrDeprecated(classDoc)) {
-      if (childInSection) {
-        writeLine("<para></para>");
-        writeLine("<para></para>");
-        indent--;
-        writeLine("</section>");
-      }
-    }
+    super.writeLine(content);
   }
 
-  private static boolean isInternalOrDeprecated(ClassDoc classDoc) {
-    if (classDoc.tags("@internal").length > 0) {
-      return true;
-    }
-    if (classDoc.tags("@deprecated").length > 0) {
-      return true;
-    }
-    return false;
+  @Override
+  protected void setupConfigSet(Map<String, String> configSet) {
+    indent = 0;
+    super.setupConfigSet(configSet);
   }
 
-  private static boolean shouldTreeBeDocumented(ClassDoc classDoc) {
-    // handled individually for each class.
-    // if (isInternalOrDeprecated(classDoc)) {
-    // return false;
-    // }
-    if (excludedSubtrees.contains(classDoc.qualifiedTypeName())) {
-      return false;
-    }
-    if (includedPackages == null) {
-      return true;
-    }
-    String pack = classDoc.containingPackage().name();
-    for (String includedPackage : includedPackages) {
-      if (pack.indexOf(includedPackage) >= 0) {
-        return true;
-      }
-    }
-    return false;
+  /**
+   * Write section.
+   *
+   * @param rootClassTree the root class tree
+   * @throws IOException the iO exception
+   */
+  @Override
+  protected void writeRootSection(ClassTree rootClassTree) throws IOException {
+    writeLine("<section>");
+    writeLine("<title>Reference for " + rootClassTree.getRoot().name() + " hierarchy</title>");
+    indent++;
+    writeLine("<para></para>");
+    processClassTree(rootClassTree);
+    indent--;
+    writeLine("</section>");
   }
 
-  private static void processClassDoc(ClassTree classTree) throws IOException {
+  /**
+   * Write class section.
+   *
+   * @param classTree the class tree
+   * @param classDoc the class doc
+   * @throws IOException the iO exception
+   */
+  @Override
+  protected void writeClassSection(ClassTree classTree, ClassDoc classDoc) throws IOException {
+    writeLine("<section id='" + classDoc.qualifiedTypeName() + "'>");
+    indent++;
+    processClassDoc(classTree);
+  }
+
+  /**
+   * Close class section.
+   *
+   * @throws IOException the iO exception
+   */
+  @Override
+  protected void closeClassSection() throws IOException {
+    writeLine("<para></para>");
+    writeLine("<para></para>");
+    indent--;
+    writeLine("</section>");
+  }
+
+  /**
+   * Javadoc to doc.
+   *
+   * @param source
+   *     the source
+   * @return the string
+   */
+  @Override
+  protected String javadocToDoc(String source) {
+    String dbSource = source.replaceAll("<p>", "</para><para>");
+    dbSource = dbSource.replaceAll("<br>", "</para><para>");
+    dbSource = dbSource.replaceAll("<i>", "<emphasis>");
+    dbSource = dbSource.replaceAll("</i>", "</emphasis>");
+    dbSource = dbSource.replaceAll("<b>", "<emphasis role='bold'>");
+    dbSource = dbSource.replaceAll("</b>", "</emphasis>");
+    dbSource = dbSource.replaceAll("<ul>", "<itemizedlist>");
+    dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
+    dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
+    dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
+    dbSource = dbSource.replaceAll("<li>", "<listitem><para>");
+    dbSource = dbSource.replaceAll("</li>", "</para></listitem>");
+    dbSource = dbSource.replaceAll("<pre>", "<programlisting>");
+    dbSource = dbSource.replaceAll("</pre>", "</programlisting>");
+    dbSource = dbSource.replaceAll("\\{@code ([^\\}]*)}", "<code>$1</code>");
+    return dbSource;
+  }
+
+  /**
+   * Process class doc.
+   *
+   * @param classTree
+   *     the class tree
+   * @throws IOException
+   *     the iO exception
+   */
+  @Override
+  protected void processClassDoc(ClassTree classTree) throws IOException {
     ClassDoc classDoc = classTree.getRoot();
     writeLine("<title>" + classDoc.name() + "</title>");
     // writeLine("<para>");
@@ -225,27 +171,22 @@ public class BeanDocbookDoclet {
     // writeLine("</para>");
     writeLine("<itemizedlist>");
     indent++;
-    writeLine("<listitem><para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='"
-        + computeJavadocUrl(classDoc.qualifiedTypeName())
-        + "'>"
-        + hyphenateDottedString(classDoc.qualifiedTypeName())
+    writeLine("<listitem><para><emphasis role='bold'>Full name</emphasis> : <code><ulink url='" + computeJavadocUrl(
+        classDoc.qualifiedTypeName()) + "'>" + hyphenateDottedString(classDoc.qualifiedTypeName())
         + "</ulink></code></para></listitem>");
-    if (classDoc.superclassType().qualifiedTypeName()
-        .startsWith("org.jspresso")) {
+    if (classDoc.superclassType().qualifiedTypeName().startsWith("org.jspresso")) {
       if (!isInternalOrDeprecated(classDoc.superclassType().asClassDoc())) {
-        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='"
-            + classDoc.superclassType().qualifiedTypeName()
-            + "'>"
-            + classDoc.superclass().name() + "</link></code></para></listitem>");
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code><link linkend='" + classDoc
+            .superclassType().qualifiedTypeName() + "'>" + classDoc.superclass().name()
+            + "</link></code></para></listitem>");
       } else {
-        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code>"
-            + classDoc.superclass().name() + "</code></para></listitem>");
+        writeLine("<listitem><para><emphasis role='bold'>Super-type</emphasis> : <code>" + classDoc.superclass().name()
+            + "</code></para></listitem>");
       }
     }
     if (classTree.getSubclasses().size() > 0) {
       StringBuffer buff = new StringBuffer();
-      List<ClassTree> children = new ArrayList<ClassTree>(classTree
-          .getSubclasses());
+      List<ClassTree> children = new ArrayList<ClassTree>(classTree.getSubclasses());
       Collections.sort(children);
       boolean first = true;
       for (ClassTree subclassTree : children) {
@@ -254,19 +195,20 @@ public class BeanDocbookDoclet {
             buff.append(", ");
           }
           first = false;
-          buff.append("<code><link linkend='"
-              + subclassTree.getRoot().qualifiedTypeName() + "'>"
-              + subclassTree.getRoot().name() + "</link></code>");
+          buff.append(
+              "<code><link linkend='" + subclassTree.getRoot().qualifiedTypeName() + "'>" + subclassTree.getRoot()
+                                                                                                        .name()
+                  + "</link></code>");
         }
       }
-      writeLine("<listitem><para><emphasis role='bold'>Sub-types</emphasis> : "
-          + buff.toString() + "</para></listitem>");
+      writeLine(
+          "<listitem><para><emphasis role='bold'>Sub-types</emphasis> : " + buff.toString() + "</para></listitem>");
     }
     indent--;
     writeLine("</itemizedlist>");
     writeLine("<para></para>");
     writeLine("<para></para>");
-    writeLine("<para>" + javadocToDocbook(classDoc.commentText()) + "</para>");
+    writeLine("<para>" + javadocToDoc(classDoc.commentText()) + "</para>");
     writeLine("<para></para>");
     writeLine("<para></para>");
     writeLine("<table colsep='0' rowsep='1' tabstyle='splitable' frame='topbot'>");
@@ -302,12 +244,11 @@ public class BeanDocbookDoclet {
       indent++;
       Parameter param = propEntry.getValue().parameters()[0];
       ParameterizedType pType = param.type().asParameterizedType();
-      StringBuffer typeBuff = new StringBuffer();
+      StringBuilder typeBuff = new StringBuilder();
       if (pType != null) {
         Type[] typeArguments = pType.asParameterizedType().typeArguments();
         if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
-          typeBuff.append("<ulink url='"
-              + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+          typeBuff.append("<ulink url='" + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
               + hyphenateCamelCase(param.type().simpleTypeName()) + "</ulink>");
         } else {
           typeBuff.append(hyphenateCamelCase(param.type().simpleTypeName()));
@@ -315,10 +256,8 @@ public class BeanDocbookDoclet {
         typeBuff.append("&#x200B;&lt;&#x200B;");
         for (int i = 0; i < typeArguments.length; i++) {
           if (typeArguments[i].qualifiedTypeName().startsWith("org.jspresso")) {
-            typeBuff.append("<ulink url='"
-                + computeJavadocUrl(typeArguments[i].qualifiedTypeName())
-                + "'>" + hyphenateCamelCase(typeArguments[i].simpleTypeName())
-                + "</ulink>");
+            typeBuff.append("<ulink url='" + computeJavadocUrl(typeArguments[i].qualifiedTypeName()) + "'>"
+                + hyphenateCamelCase(typeArguments[i].simpleTypeName()) + "</ulink>");
           } else {
             typeBuff.append(typeArguments[i].simpleTypeName());
           }
@@ -329,26 +268,24 @@ public class BeanDocbookDoclet {
         typeBuff.append("&#x200B;&gt;&#x200B;");
       } else {
         if (param.type().qualifiedTypeName().startsWith("org.jspresso")) {
-          typeBuff.append("<ulink url='"
-              + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
+          typeBuff.append("<ulink url='" + computeJavadocUrl(param.type().qualifiedTypeName()) + "'>"
               + hyphenateCamelCase(param.type().simpleTypeName()) + "</ulink>");
         } else {
           typeBuff.append(hyphenateCamelCase(param.type().simpleTypeName()));
         }
       }
-      writeLine("<entry valign='middle'><para><emphasis role='bold'>"
-          + propEntry.getKey() + "</emphasis></para><para><code>"
-          + typeBuff.toString() + "</code></para></entry>");
-      writeLine("<entry><para>"
-          + javadocToDocbook(propEntry.getValue().commentText())
-          + "</para></entry>");
+      writeLine(
+          "<entry valign='middle'><para><emphasis role='bold'>" + propEntry.getKey() + "</emphasis></para><para><code>"
+              + typeBuff.toString() + "</code></para></entry>");
+      writeLine("<entry><para>" + javadocToDoc(propEntry.getValue().commentText()) + "</para></entry>");
       indent--;
       writeLine("</row>");
     }
     if (!atleastOneRow) {
       writeLine("<row>");
       indent++;
-      writeLine("<entry namest='property' nameend='description'>This class does not have any specific property.</entry>");
+      writeLine(
+          "<entry namest='property' nameend='description'>This class does not have any specific property.</entry>");
       indent--;
       writeLine("</row>");
     }
@@ -360,133 +297,14 @@ public class BeanDocbookDoclet {
     writeLine("</table>");
   }
 
-  private static boolean isSetterForRefDoc(MethodDoc methodDoc) {
-    return methodDoc.isPublic() && isSetter(methodDoc)
-        && methodDoc.tags("@internal").length == 0
-        && methodDoc.tags("@deprecated").length == 0;
-  }
-
-  private static String hyphenateDottedString(String source) {
-    return source.replace(".", "&#x200B;.");
-  }
-
-  private static String hyphenateCamelCase(String source) {
-    StringBuffer buff = new StringBuffer();
-    for (int i = 0; i < source.length() - 1; i++) {
-      char c1 = source.charAt(i);
-      char c2 = source.charAt(i + 1);
-      buff.append(c1);
-      if (Character.isLowerCase(c1) && Character.isUpperCase(c2)) {
-        buff.append("&#x200B;");
-      }
-    }
-    buff.append(source.charAt(source.length() - 1));
-    return buff.toString();
-  }
-
-  private static String computeJavadocUrl(String qualifiedName) {
-    return apidocUrl + "/" + qualifiedName.replace(".", "/") + ".html";
-  }
-
-  private static String javadocToDocbook(String source) {
-    String dbSource = source.replaceAll("<p>", "</para><para>");
-    dbSource = dbSource.replaceAll("<br>", "</para><para>");
-    dbSource = dbSource.replaceAll("<i>", "<emphasis>");
-    dbSource = dbSource.replaceAll("</i>", "</emphasis>");
-    dbSource = dbSource.replaceAll("<b>", "<emphasis role='bold'>");
-    dbSource = dbSource.replaceAll("</b>", "</emphasis>");
-    dbSource = dbSource.replaceAll("<ul>", "<itemizedlist>");
-    dbSource = dbSource.replaceAll("</ul>", "</itemizedlist>");
-    dbSource = dbSource.replaceAll("<ol>", "<orderedlist>");
-    dbSource = dbSource.replaceAll("</ol>", "</orderedlist>");
-    dbSource = dbSource.replaceAll("<li>", "<listitem><para>");
-    dbSource = dbSource.replaceAll("</li>", "</para></listitem>");
-    dbSource = dbSource.replaceAll("<pre>", "<programlisting>");
-    dbSource = dbSource.replaceAll("</pre>", "</programlisting>");
-    return dbSource;
-  }
-
-  private static String getProperty(MethodDoc methodDoc) {
-    return methodDoc.name().substring(3, 4).toLowerCase()
-        + methodDoc.name().substring(4);
-  }
-
-  private static boolean isSetter(MethodDoc methodDoc) {
-    return methodDoc.name().startsWith("set");
-  }
-
-  private static void writeLine(String content) throws IOException {
-    for (int i = 0; i < indent; i++) {
-      writer.write("  ");
-    }
-    writer.write(content);
-    writer.write("\n");
-  }
-
   /**
-   * Indicates this doclet supports 1.5 sources.
-   * 
-   * @return LanguageVersion.JAVA_1_5
+   * Gets output extension.
+   *
+   * @return the output extension
    */
-  public static LanguageVersion languageVersion() {
-    return LanguageVersion.JAVA_1_5;
-  }
-
-  private static void readOptions(String[][] options) {
-    for (int i = 0; i < options.length; i++) {
-      String[] opt = options[i];
-      String[] splittedOpt = opt[0].split("_");
-      String optionName = splittedOpt[0];
-
-      Map<String, String> configSet = null;
-      if (splittedOpt.length > 1) {
-        String configName = splittedOpt[1];
-        configSet = configSets.get(configName);
-        if (configSet == null) {
-          configSet = new HashMap<String, String>();
-          configSets.put(configName, configSet);
-        }
-      }
-      if (optionName.equals("-outputDir")) {
-        outputDir = opt[1];
-      } else if (optionName.equals("-apidocUrl")) {
-        apidocUrl = opt[1];
-      } else if (configSet != null) {
-        if (optionName.equals("-rootClassName")) {
-          configSet.put("rootClassName", opt[1]);
-        } else if (optionName.equals("-maxDepth")) {
-          configSet.put("maxDepth", opt[1]);
-        } else if (optionName.equals("-excludedSubtrees")) {
-          configSet.put("excludedSubtrees", opt[1]);
-        } else if (optionName.equals("-includedPackages")) {
-          configSet.put("includedPackages", opt[1]);
-        }
-      }
-    }
-  }
-
-  /**
-   * Mandatory for custom options
-   * 
-   * @param option
-   *          the custom option.
-   * @return the length of the option including the option itself.
-   */
-  public static int optionLength(String option) {
-    if (option.startsWith("-rootClassName")) {
-      return 2;
-    } else if (option.startsWith("-maxDepth")) {
-      return 2;
-    } else if (option.startsWith("-excludedSubtrees")) {
-      return 2;
-    } else if (option.startsWith("-includedPackages")) {
-      return 2;
-    } else if (option.equals("-outputDir")) {
-      return 2;
-    } else if (option.equals("-apidocUrl")) {
-      return 2;
-    }
-    return 0;
+  @Override
+  protected String getOutputExtension() {
+    return ".xml";
   }
 
 }

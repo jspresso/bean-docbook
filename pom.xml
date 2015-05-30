@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.jspresso.framework</groupId>
     <artifactId>jspresso-root</artifactId>
-    <version>3.5-SNAPSHOT</version>
+    <version>4.1</version>
   </parent>
   <groupId>org.jspresso.tools</groupId>
   <artifactId>jspresso-beandocbook</artifactId>
-  <version>3.5-SNAPSHOT</version>
+  <version>4.1-SNAPSHOT</version>
   <name>Jspresso BeanDocbook</name>
   <description>Bean docbook doclet for the Jspresso documentation</description>
 
@@ -63,14 +63,14 @@
       <activation>
         <property>
           <name>java.vendor</name>
-          <value>Sun Microsystems Inc.</value>
+          <value>Oracle Corporation</value>
         </property>
       </activation>
       <dependencies>
         <dependency>
           <groupId>com.sun</groupId>
           <artifactId>tools</artifactId>
-          <version>1.5.0</version>
+          <version>1.7.0</version>
           <scope>system</scope>
           <systemPath>${java.home}/../lib/tools.jar</systemPath>
         </dependency>
