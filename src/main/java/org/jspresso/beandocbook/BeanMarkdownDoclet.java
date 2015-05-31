@@ -79,7 +79,6 @@ public class BeanMarkdownDoclet extends AbstractBeanDoclet {
    */
   @Override
   protected void writeClassSection(ClassTree classTree, ClassDoc classDoc) throws IOException {
-    writeLine("### " + classDoc.qualifiedTypeName());
     processClassDoc(classTree);
   }
 
@@ -119,7 +118,7 @@ public class BeanMarkdownDoclet extends AbstractBeanDoclet {
   @Override
   protected void processClassDoc(ClassTree classTree) throws IOException {
     ClassDoc classDoc = classTree.getRoot();
-    writeLine("#### " + classDoc.name());
+    writeLine("#### " + "<a name=\"" + classDoc.qualifiedTypeName() + "\"></a>" + classDoc.name());
     writeLine("");
     writeLine("+ **Full name** : " + createLink(classDoc.qualifiedTypeName(), computeJavadocUrl(
         classDoc.qualifiedTypeName())));
@@ -142,7 +141,7 @@ public class BeanMarkdownDoclet extends AbstractBeanDoclet {
             buff.append(", ");
           }
           first = false;
-          buff.append(createLink(subclassTree.getRoot().name(), subclassTree.getRoot().qualifiedTypeName()));
+          buff.append(createLink(subclassTree.getRoot().name(), "#" + subclassTree.getRoot().qualifiedTypeName()));
         }
       }
       writeLine("+ **Sub-types** : " + buff.toString());
@@ -224,6 +223,8 @@ public class BeanMarkdownDoclet extends AbstractBeanDoclet {
     }
     writeLine("</tbody>");
     writeLine("</table>");
+    writeLine("");
+    writeLine("---");
   }
 
   private String createLink(String linkText, String linkEnd) {
