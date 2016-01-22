@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005-2011 Vincent Vandenschrick. All rights reserved.
+ * Copyright (c) 2005-2016 Vincent Vandenschrick. All rights reserved.
  *
  *  This file is part of the Jspresso framework.
  *
@@ -25,7 +25,7 @@ import com.sun.javadoc.ClassDoc;
 
 /**
  * Data structure to represent a class tree.
- * 
+ *
  * @version $LastChangedRevision: 3701 $
  * @author Vincent Vandenschrick
  */
@@ -36,7 +36,7 @@ public class ClassTree implements Comparable<ClassTree> {
 
   /**
    * Constructs a new <code>ClassTree</code> instance.
-   * 
+   *
    * @param root
    *          the root of this class tree.
    */
@@ -47,7 +47,7 @@ public class ClassTree implements Comparable<ClassTree> {
 
   /**
    * Gets the root.
-   * 
+   *
    * @return the root.
    */
   public ClassDoc getRoot() {
@@ -64,7 +64,7 @@ public class ClassTree implements Comparable<ClassTree> {
 
   /**
    * Gets the subclasses.
-   * 
+   *
    * @return the subclasses.
    */
   public Set<ClassTree> getSubclasses() {
