@@ -42,6 +42,34 @@
       <organization>Jspresso</organization>
     </developer>
   </developers>
+  <repositories>
+    <repository>
+      <id>jspresso-repository</id>
+      <url>http://repository.jspresso.org/maven2</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>jspresso-snapshots-repository</id>
+      <url>http://repository.jspresso.org/maven2-snapshots</url>
+      <snapshots>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>jspresso-private-repository</id>
+      <url>http://repository.jspresso.org/maven2-private</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>jspresso-private-snapshots-repository</id>
+      <url>http://repository.jspresso.org/maven2-snapshots-private</url>
+      <snapshots>
+      </snapshots>
+    </repository>
+  </repositories>
   <distributionManagement>
     <repository>
       <id>jspresso-repository</id>
